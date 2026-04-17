@@ -7,6 +7,7 @@ use jsonschema::Validator;
 use serde_json::Value;
 use std::path::Path;
 use std::sync::Arc;
+use tracing::{debug, info_span, warn};
 
 /// Shared, read-only state threaded into every worker.
 pub struct Pipeline {
@@ -26,6 +27,7 @@ impl Pipeline {
     /// emit regardless of outcome (success or error).
     pub fn classify_file(&self, path: &Path) -> ResultRecord {
         let source = path.display().to_string();
+        let _span = info_span!("classify", file = %source).entered();
 
         // SPEC §9.1 — read the document. Binary (non-UTF-8) → error record.
         let contents = match std::fs::read(path) {
@@ -68,6 +70,7 @@ impl Pipeline {
         // attempts = 1 initial + up to max_retries retries (SPEC §9.4).
         let total_attempts = 1 + self.max_retries;
         for attempt in 0..total_attempts {
+            log_prompt(attempt, &messages);
             let raw = match self.client.chat(&messages, self.model.as_deref()) {
                 Ok(s) => s,
                 Err(e) => {
@@ -75,6 +78,7 @@ impl Pipeline {
                     // for retry purposes, feeding the error back to the model
                     // on the next loop.
                     last_error_detail = format!("model call failed: {e}");
+                    warn!(attempt = attempt + 1, error = %last_error_detail, "model call failed");
                     // No assistant content to append; but we still want to
                     // give the model a chance to try again with feedback.
                     if attempt + 1 < total_attempts {
@@ -95,6 +99,7 @@ impl Pipeline {
                 }
             };
 
+            debug!(attempt = attempt + 1, response = %raw, "model response");
             // Strip code fences if the model emitted them anyway.
             let candidate_str = strip_code_fences(&raw);
 
@@ -103,6 +108,7 @@ impl Pipeline {
                 Ok(v) => v,
                 Err(e) => {
                     last_error_detail = format!("response was not valid JSON: {e}");
+                    warn!(attempt = attempt + 1, error = %last_error_detail, "JSON parse failed");
                     if attempt + 1 < total_attempts {
                         messages.push(Message::assistant(raw.clone()));
                         messages.push(Message::user(format!(
@@ -125,10 +131,12 @@ impl Pipeline {
             // Validate against schema.
             match collect_errors(&self.validator, &parsed) {
                 Ok(()) => {
+                    debug!(attempt = attempt + 1, "validation succeeded");
                     return ResultRecord::ok(source, parsed);
                 }
                 Err(errs) => {
                     last_error_detail = errs.join("; ");
+                    warn!(attempt = attempt + 1, error = %last_error_detail, "schema validation failed");
                     if attempt + 1 < total_attempts {
                         messages.push(Message::assistant(raw.clone()));
                         messages.push(Message::user(format!(
@@ -157,6 +165,26 @@ impl Pipeline {
                 self.max_retries, last_error_detail
             ),
         )
+    }
+}
+
+/// Emit the full prompt at `debug`. On the first attempt this logs the
+/// initial system + user messages; on retries it logs the appended
+/// assistant/user feedback messages so you can see what the model was
+/// told about its previous failure.
+fn log_prompt(attempt: u32, messages: &[Message]) {
+    // Enabled check avoids the allocation when the user hasn't opted in.
+    if !tracing::enabled!(tracing::Level::DEBUG) {
+        return;
+    }
+    for (i, m) in messages.iter().enumerate() {
+        debug!(
+            attempt = attempt + 1,
+            index = i,
+            role = m.role,
+            content = %m.content,
+            "prompt message",
+        );
     }
 }
 

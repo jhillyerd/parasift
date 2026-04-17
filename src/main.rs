@@ -20,6 +20,7 @@ use std::sync::{Arc, Mutex};
 use crate::classify::Pipeline;
 use crate::client::ChatClient;
 use crate::output::emit;
+use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -50,6 +51,17 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // Initialize tracing. Respects RUST_LOG; defaults to `warn` so a
+    // normal invocation stays quiet. Writes to stderr so stdout stays
+    // reserved for the JSONL records (SPEC §5).
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("warn"));
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .with_target(false)
+        .init();
 
     if cli.concurrency < 1 {
         bail!("--concurrency must be >= 1");
