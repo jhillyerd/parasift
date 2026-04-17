@@ -1,0 +1,49 @@
+SERVICE AGREEMENT
+
+This Service Agreement ("Agreement") is entered into as of January 1, 2025,
+between Nexus Digital LLC, a Delaware limited liability company ("Service
+Provider"), and Pinnacle Solutions Inc., a California corporation ("Client").
+
+1. SERVICES
+   Service Provider agrees to provide software architecture consulting,
+   system design review, and up to 20 hours per month of on-call technical
+   advisory services as described in Exhibit A.
+
+2. TERM
+   This Agreement commences on the date first written above and continues
+   for twelve (12) months, unless terminated earlier in accordance with
+   Section 7.
+
+3. COMPENSATION
+   Client shall pay Service Provider a monthly retainer of USD $5,000,
+   invoiced on the first business day of each month, net 30.
+
+4. CONFIDENTIALITY
+   Each party agrees to hold the other's Confidential Information in strict
+   confidence and not to disclose it to any third party without prior
+   written consent.
+
+5. INTELLECTUAL PROPERTY
+   All work product created by Service Provider under this Agreement shall
+   be considered work-for-hire and shall become the sole property of Client
+   upon full payment.
+
+6. LIMITATION OF LIABILITY
+   In no event shall either party be liable for indirect, incidental, or
+   consequential damages, even if advised of the possibility of such damages.
+
+7. TERMINATION
+   Either party may terminate this Agreement with thirty (30) days' written
+   notice. Client shall pay for all services rendered through the effective
+   termination date.
+
+8. GOVERNING LAW
+   This Agreement shall be governed by the laws of the State of California.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date
+first written above.
+
+Nexus Digital LLC                    Pinnacle Solutions Inc.
+By: _____________________            By: _____________________
+Name: A. Rivera                      Name: D. Chen
+Title: Managing Member               Title: Chief Operating Officer

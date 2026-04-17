@@ -1,0 +1,18 @@
+URBAN GRIND COFFEE
+123 Main St, Portland OR 97201
+Tel: (503) 555-0191
+
+Date: 2024-10-03  Time: 08:14
+
+  Flat White          $5.50
+  Blueberry Muffin    $3.75
+  ─────────────────────────
+  Subtotal            $9.25
+  Tax (8.5%)          $0.79
+  ─────────────────────────
+  TOTAL               $10.04
+
+Paid by: Visa …4321   APPROVED
+Auth: 884421
+
+Thank you! Loyalty points: 10 earned, 120 total.

@@ -1,0 +1,16 @@
+TAX INVOICE #SI-2025-0007
+
+Vendor: WidgetCo Ltd
+Vendor ABN: 51 824 753 556
+Customer: BetaWorks Pty Ltd
+Date: 2025-01-09
+
+Item 1 — Industrial Widgets (qty 200)  @ $4.50 each  =  $900.00
+Item 2 — Shipping & Handling                          =   $45.00
+Item 3 — Rush Processing Fee                          =   $30.00
+
+Net:     $975.00
+GST:      $97.50
+Total:  $1,072.50
+
+Please pay within 14 days.  Late payments incur 1.5 % per month.

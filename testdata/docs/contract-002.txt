@@ -1,0 +1,36 @@
+NON-DISCLOSURE AGREEMENT
+
+This Non-Disclosure Agreement ("NDA") is made effective February 14, 2025,
+between Alpha Ventures LLC ("Disclosing Party") and Beta Analytics Corp
+("Receiving Party").
+
+WHEREAS, the parties wish to explore a potential business collaboration
+(the "Purpose") and may need to disclose certain confidential information;
+
+NOW, THEREFORE, the parties agree as follows:
+
+1. "Confidential Information" means any non-public information disclosed by
+   the Disclosing Party relating to its business, technology, finances,
+   customers, or strategy.
+
+2. The Receiving Party shall: (a) hold all Confidential Information in
+   strict confidence; (b) not disclose it to any third party; (c) use it
+   solely for evaluating the Purpose.
+
+3. Obligations do not apply to information that: (a) is or becomes publicly
+   known through no breach of this NDA; (b) was rightfully in Receiving
+   Party's possession before disclosure; (c) is required to be disclosed by
+   law.
+
+4. This NDA shall remain in effect for three (3) years from the effective
+   date.
+
+5. Breach of this Agreement will cause irreparable harm, entitling
+   Disclosing Party to seek equitable relief without bond.
+
+Signed:
+
+Alpha Ventures LLC                   Beta Analytics Corp
+______________________               ______________________
+M. Torres, CEO                       L. Nakamura, VP Strategy
+Date: 2025-02-14                     Date: 2025-02-14

@@ -1,0 +1,19 @@
+GREENLEAF PHARMACY
+89 Elm Street, Chicago IL 60601
+Ph: 312-555-0143
+
+Patient: J. Smith
+Date: 2024-12-01
+
+  Prescription — Metformin 500mg (90ct)   $12.00
+  Prescription — Lisinopril 10mg  (30ct)   $8.50
+  Vitamin D3 2000 IU (100ct)              $11.99
+  Compression socks (pair)                $19.95
+  ─────────────────────────────────────────────
+  Subtotal                                $52.44
+  Insurance adjustment                   -$15.00
+  Patient total                           $37.44
+
+  Paid: Visa …5599   APPROVED
+
+Rx 1: Dr. K. Patel   NPI 1234567890

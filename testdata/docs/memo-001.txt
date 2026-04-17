@@ -1,0 +1,27 @@
+INTERNAL MEMORANDUM
+
+TO:   All Engineering Staff
+FROM: R. Okafor, VP Engineering
+DATE: 2025-03-10
+RE:   Quarterly Infrastructure Review
+
+This memo summarises the outcomes from last week's infrastructure review
+meeting and the action items assigned.
+
+SUMMARY OF FINDINGS
+
+1. CI pipeline median build time increased from 6 min to 11 min over Q4.
+   Root cause: test parallelism reduced after the runner pool was cut.
+   Action: restore the pool to 20 runners by March 31 (owner: DevOps).
+
+2. Database p99 query latency spiked on Jan 15 due to a missing index on
+   the user_events table.  Index has since been added; latency is nominal.
+
+3. S3 egress costs rose 28 % in Q4.  Audit revealed large log archives
+   were being served directly rather than via CloudFront.
+   Action: migrate log delivery to CloudFront by April 15 (owner: Infra).
+
+NEXT STEPS
+
+All owners are expected to provide status updates at the April 7 all-hands.
+Please direct questions to the #infra-review Slack channel.

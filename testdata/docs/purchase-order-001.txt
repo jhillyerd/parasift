@@ -1,0 +1,23 @@
+PURCHASE ORDER
+
+PO Number:  PO-2025-0334
+Issue Date: 2025-02-20
+Ship-to:    Acme Corporation, 500 Commerce Blvd, Chicago IL 60602
+
+Supplier:   OfficeSupplyCo
+            200 Warehouse Row, Memphis TN 38101
+
+Line  Description                         Qty   Unit Price   Total
+───────────────────────────────────────────────────────────────────
+  1   A4 Copy Paper (80 gsm, 500-sheet)   50 ream   $5.20   $260.00
+  2   Ballpoint Pen Assorted (50-pack)     4 box    $8.95    $35.80
+  3   Whiteboard Markers Set (8-colour)   10 set    $7.50    $75.00
+  4   Sticky Notes 3×3 (12-pad pack)       6 pack   $9.00    $54.00
+  5   Stapler Heavy Duty                   5 unit   $22.00   $110.00
+───────────────────────────────────────────────────────────────────
+Subtotal                                                    $534.80
+Shipping                                                     $18.00
+Tax (9.5%)                                                   $50.81
+TOTAL                                                       $603.61
+
+Authorised by: P. Williams, Procurement Manager

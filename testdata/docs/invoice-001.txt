@@ -1,0 +1,18 @@
+INVOICE
+
+Billed to: Acme Corporation
+Invoice number: INV-2024-0042
+Date: 2024-11-15
+Due date: 2024-12-15
+
+Services rendered:
+  Software development consulting  x 8 h   @ $150/h  =  $1,200.00
+  Code review session              x 2 h   @ $150/h  =    $300.00
+  Documentation                    x 4 h   @ $ 80/h  =    $320.00
+
+Subtotal:  $1,820.00
+Tax (10%):   $182.00
+TOTAL DUE: $2,002.00
+
+Payment terms: Net 30.  Please reference invoice number on payment.
+Bank: First National, account 4400-1234-5678, routing 021000021.

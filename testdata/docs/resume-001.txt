@@ -1,0 +1,30 @@
+JAMIE CHEN
+Portland, OR  •  jamie.chen@email.example  •  (503) 555-0177
+github.com/jamiechen  •  linkedin.com/in/jamiechen
+
+SUMMARY
+Full-stack software engineer with 7 years of experience designing and
+shipping production systems.  Specialises in distributed backends (Go, Rust)
+and modern React frontends.
+
+EXPERIENCE
+
+Senior Software Engineer — StreamlineHQ, Portland OR       2021 – present
+  • Led re-architecture of the ingestion pipeline; reduced p99 latency
+    from 800 ms to 120 ms.
+  • Mentored a team of 5 engineers; introduced structured code review
+    workflow that cut post-merge defects by 40 %.
+  • Owned migration of monolith to microservices (12 services, 0 downtime).
+
+Software Engineer — TechNova Inc., San Francisco CA        2018 – 2021
+  • Built real-time analytics dashboard serving 50 K daily active users.
+  • Implemented OAuth 2.0 / OIDC single sign-on across 8 products.
+
+Junior Developer — StartupFactory, Remote                  2017 – 2018
+  • Developed customer-facing REST APIs in Node.js / Express.
+
+EDUCATION
+B.Sc. Computer Science, University of Oregon, 2017  (GPA 3.8)
+
+SKILLS
+Go · Rust · TypeScript · React · PostgreSQL · Redis · Kubernetes · AWS

@@ -1,0 +1,28 @@
+instructions: |
+  You are a document classifier. Read the document and produce a JSON
+  object that conforms to the provided schema. Do not include any
+  commentary outside the JSON.
+
+model: local-model
+
+max_retries: 2
+
+schema:
+  $schema: "https://json-schema.org/draft/2020-12/schema"
+  type: object
+  additionalProperties: false
+  required: [category, confidence]
+  properties:
+    category:
+      type: string
+      enum: [invoice, receipt, contract, other]
+    confidence:
+      type: number
+      minimum: 0
+      maximum: 1
+    notes:
+      type: string
+  examples:
+    - category: invoice
+      confidence: 0.92
+      notes: "Has invoice number and total."
