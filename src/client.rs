@@ -169,7 +169,10 @@ impl ChatClient {
                 let body_text = resp.into_string().unwrap_or_default();
                 let err = anyhow!("inference server returned HTTP {code}: {body_text}");
                 return if is_retryable_status(code) {
-                    Err(AttemptError::Retryable { error: err, retry_after })
+                    Err(AttemptError::Retryable {
+                        error: err,
+                        retry_after,
+                    })
                 } else {
                     Err(AttemptError::Fatal(err))
                 };
@@ -209,9 +212,7 @@ impl ChatClient {
             .next()
             .and_then(|c| c.message.content)
             .ok_or_else(|| {
-                AttemptError::Fatal(anyhow!(
-                    "chat response missing choices[0].message.content"
-                ))
+                AttemptError::Fatal(anyhow!("chat response missing choices[0].message.content"))
             })
     }
 }
@@ -252,9 +253,7 @@ fn backoff_delay(attempt: u32, retry_after: Option<Duration>) -> Duration {
     // Saturating shift so `attempt` of 30+ doesn't overflow; cap below
     // makes the upper bound bounded anyway.
     let shift = attempt.min(16);
-    let ceiling = BACKOFF_BASE
-        .saturating_mul(1u32 << shift)
-        .min(BACKOFF_CAP);
+    let ceiling = BACKOFF_BASE.saturating_mul(1u32 << shift).min(BACKOFF_CAP);
     let jittered = Duration::from_nanos(rand_range(ceiling.as_nanos() as u64));
     let base = match retry_after {
         Some(hint) => hint.max(jittered),
@@ -319,14 +318,20 @@ mod tests {
     #[test]
     fn retry_after_parses_seconds() {
         assert_eq!(parse_retry_after(Some("5")), Some(Duration::from_secs(5)));
-        assert_eq!(parse_retry_after(Some(" 12 ")), Some(Duration::from_secs(12)));
+        assert_eq!(
+            parse_retry_after(Some(" 12 ")),
+            Some(Duration::from_secs(12))
+        );
         assert_eq!(parse_retry_after(Some("0")), Some(Duration::from_secs(0)));
     }
 
     #[test]
     fn retry_after_rejects_non_numeric() {
         // HTTP-date format is valid per RFC but we don't parse it.
-        assert_eq!(parse_retry_after(Some("Wed, 21 Oct 2015 07:28:00 GMT")), None);
+        assert_eq!(
+            parse_retry_after(Some("Wed, 21 Oct 2015 07:28:00 GMT")),
+            None
+        );
         assert_eq!(parse_retry_after(Some("")), None);
         assert_eq!(parse_retry_after(None), None);
     }
