@@ -16,6 +16,9 @@ pub struct Pipeline {
     pub example_json: String,
     pub model: Option<String>,
     pub max_retries: u32,
+    /// When true, the file's basename is included in the prompt sent to
+    /// the model. When false (benchmark mode), only the contents are sent.
+    pub include_filename: bool,
 }
 
 impl Pipeline {
@@ -43,9 +46,19 @@ impl Pipeline {
             instructions = self.instructions.trim_end(),
             example = self.example_json,
         );
-        let user_content = format!(
-            "Classify the following document. Output ONLY the JSON object.\n\n---\n{text}\n---"
-        );
+        let user_content = if self.include_filename {
+            let basename = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            format!(
+                "Classify the following document. Output ONLY the JSON object.\n\nFilename: {basename}\n\n---\n{text}\n---"
+            )
+        } else {
+            format!(
+                "Classify the following document. Output ONLY the JSON object.\n\n---\n{text}\n---"
+            )
+        };
 
         let mut messages: Vec<Message> =
             vec![Message::system(system_content), Message::user(user_content)];

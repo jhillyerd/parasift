@@ -40,6 +40,12 @@ struct Cli {
     /// Should match the server's slot count.
     #[arg(long, short = 'j', default_value_t = 1)]
     concurrency: usize,
+
+    /// Hide filenames from the model. By default the file's basename is
+    /// included in the prompt; pass this flag for unbiased benchmarking
+    /// where filenames may leak the ground-truth label.
+    #[arg(long)]
+    hide_filename: bool,
 }
 
 fn main() -> Result<()> {
@@ -82,6 +88,7 @@ fn main() -> Result<()> {
         example_json,
         model: cfg.model,
         max_retries: cfg.max_retries,
+        include_filename: !cli.hide_filename,
     });
 
     let stdout_lock = Arc::new(Mutex::new(io::stdout()));
