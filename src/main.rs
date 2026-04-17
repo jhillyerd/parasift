@@ -84,7 +84,8 @@ fn main() -> Result<()> {
     let example_json = serde_json::to_string_pretty(&example).expect("example serialization");
 
     // Connect to the inference server (validates CLASSIFIER_LLM_URL).
-    let client = ChatClient::from_env()?;
+    // The client's idle-connection pool is sized from `--concurrency`.
+    let client = ChatClient::from_env(cli.concurrency)?;
 
     // Enumerate input files, non-recursive, files only, skip dot-files.
     let files = list_input_files(&cli.input)?;
@@ -105,8 +106,13 @@ fn main() -> Result<()> {
 
     let stdout_lock = Arc::new(Mutex::new(io::stdout()));
 
+    // 512 KiB stacks are plenty for our workers: the only recursion is
+    // `example::synthesize` descending user-authored JSON schemas, and
+    // everything else is flat. Shrinking from rayon's 2 MiB default
+    // saves ~150 MiB of virtual address space at --concurrency=100.
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(cli.concurrency)
+        .stack_size(512 * 1024)
         .build()
         .context("failed to build rayon thread pool")?;
 

@@ -46,13 +46,27 @@ pub struct ChatClient {
 impl ChatClient {
     /// Build a client from environment variables. Fails if
     /// `CLASSIFIER_LLM_URL` is unset or empty (SPEC §3).
-    pub fn from_env() -> Result<Self> {
+    ///
+    /// `concurrency` is the number of worker threads that will share this
+    /// client; it is used to size the HTTP keep-alive pool so workers
+    /// can hand sockets back and forth instead of re-handshaking TLS on
+    /// every request.
+    pub fn from_env(concurrency: usize) -> Result<Self> {
         let base_url = std::env::var(URL_ENV).ok().unwrap_or_default();
         if base_url.trim().is_empty() {
             bail!("required environment variable {URL_ENV} is unset or empty");
         }
         let api_key = std::env::var(API_KEY_ENV).ok().filter(|s| !s.is_empty());
+
+        // Keep roughly 20% of the worker count as warm idle connections.
+        // At N=1 this floors to 1; at N=100 it's 20. Idle sockets are cheap
+        // but not free, so we don't reserve one per worker — workers mostly
+        // stay busy, so we just need enough warm connections to cover the
+        // churn when a few workers finish at once.
+        let idle_pool = ((concurrency as f64 * 0.2).ceil() as usize).max(1);
         let agent = ureq::AgentBuilder::new()
+            .max_idle_connections(idle_pool)
+            .max_idle_connections_per_host(idle_pool)
             .timeout_connect(Duration::from_secs(10))
             .timeout_read(Duration::from_secs(300))
             .timeout_write(Duration::from_secs(60))
