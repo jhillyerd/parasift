@@ -21,3 +21,8 @@ target
 #.idea/
 .devenv
 devenv.lock
+
+
+# Added by cargo
+
+/target
