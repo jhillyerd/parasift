@@ -64,6 +64,11 @@ impl Pipeline {
 
         let mut messages: Vec<Message> =
             vec![Message::system(system_content), Message::user(user_content)];
+        // Anything past INITIAL_MESSAGES is retry feedback that we
+        // replace on each failed attempt rather than append (see
+        // `requeue_feedback`). Keeps request payloads bounded regardless
+        // of `max_retries`.
+        const INITIAL_MESSAGES: usize = 2;
 
         let mut last_error_detail = String::new();
 
@@ -82,10 +87,18 @@ impl Pipeline {
                     // No assistant content to append; but we still want to
                     // give the model a chance to try again with feedback.
                     if attempt + 1 < total_attempts {
-                        messages.push(Message::user(format!(
-                            "The previous request did not produce output ({}). Try again and output ONLY the JSON object.",
-                            last_error_detail
-                        )));
+                        // No assistant content to show the model (request
+                        // didn't even succeed), so just replace any prior
+                        // feedback with a fresh "try again" nudge.
+                        requeue_feedback(
+                            &mut messages,
+                            INITIAL_MESSAGES,
+                            None,
+                            &format!(
+                                "The previous request did not produce output ({}). Try again and output ONLY the JSON object.",
+                                last_error_detail
+                            ),
+                        );
                         continue;
                     } else {
                         return ResultRecord::err(
@@ -110,11 +123,15 @@ impl Pipeline {
                     last_error_detail = format!("response was not valid JSON: {e}");
                     warn!(attempt = attempt + 1, error = %last_error_detail, "JSON parse failed");
                     if attempt + 1 < total_attempts {
-                        messages.push(Message::assistant(raw.clone()));
-                        messages.push(Message::user(format!(
-                            "Your previous output did not validate: {}. Output ONLY a single JSON object that conforms to the schema.",
-                            last_error_detail
-                        )));
+                        requeue_feedback(
+                            &mut messages,
+                            INITIAL_MESSAGES,
+                            Some(&raw),
+                            &format!(
+                                "Your previous output did not validate: {}. Output ONLY a single JSON object that conforms to the schema.",
+                                last_error_detail
+                            ),
+                        );
                         continue;
                     } else {
                         return ResultRecord::err(
@@ -138,11 +155,15 @@ impl Pipeline {
                     last_error_detail = errs.join("; ");
                     warn!(attempt = attempt + 1, error = %last_error_detail, "schema validation failed");
                     if attempt + 1 < total_attempts {
-                        messages.push(Message::assistant(raw.clone()));
-                        messages.push(Message::user(format!(
-                            "Your previous output did not validate against the schema: {}. Fix it and output ONLY a single JSON object.",
-                            last_error_detail
-                        )));
+                        requeue_feedback(
+                            &mut messages,
+                            INITIAL_MESSAGES,
+                            Some(&raw),
+                            &format!(
+                                "Your previous output did not validate against the schema: {}. Fix it and output ONLY a single JSON object.",
+                                last_error_detail
+                            ),
+                        );
                         continue;
                     } else {
                         return ResultRecord::err(
@@ -188,6 +209,25 @@ fn log_prompt(attempt: u32, messages: &[Message]) {
     }
 }
 
+/// Replace any retry-feedback messages beyond the initial system+user
+/// pair with the latest assistant output (if any) and the latest
+/// validator/transport feedback. This keeps the request payload size
+/// constant across retries regardless of `max_retries`; the model only
+/// ever sees the most recent failure, which is what it actually needs
+/// to fix its next response.
+fn requeue_feedback(
+    messages: &mut Vec<Message>,
+    initial_len: usize,
+    last_assistant: Option<&str>,
+    feedback: &str,
+) {
+    messages.truncate(initial_len);
+    if let Some(raw) = last_assistant {
+        messages.push(Message::assistant(raw.to_string()));
+    }
+    messages.push(Message::user(feedback.to_string()));
+}
+
 /// If the model wrapped JSON in ```json ... ``` fences, peel them off.
 fn strip_code_fences(s: &str) -> &str {
     let t = s.trim();
@@ -215,5 +255,34 @@ mod tests {
         assert_eq!(strip_code_fences("```json\n{\"a\":1}\n```"), "{\"a\":1}");
         assert_eq!(strip_code_fences("```\n{\"a\":1}\n```"), "{\"a\":1}");
         assert_eq!(strip_code_fences("  {\"a\":1}  "), "{\"a\":1}");
+    }
+
+    #[test]
+    fn requeue_feedback_replaces_prior_attempts() {
+        let mut messages = vec![Message::system("sys"), Message::user("doc")];
+
+        // First failed attempt: push assistant + feedback.
+        requeue_feedback(&mut messages, 2, Some("bad1"), "fix1");
+        assert_eq!(messages.len(), 4);
+        assert_eq!(messages[2].content, "bad1");
+        assert_eq!(messages[3].content, "fix1");
+
+        // Second failed attempt: prior feedback is replaced, not appended.
+        requeue_feedback(&mut messages, 2, Some("bad2"), "fix2");
+        assert_eq!(messages.len(), 4, "retry history must not grow unboundedly");
+        assert_eq!(messages[0].content, "sys");
+        assert_eq!(messages[1].content, "doc");
+        assert_eq!(messages[2].content, "bad2");
+        assert_eq!(messages[3].content, "fix2");
+    }
+
+    #[test]
+    fn requeue_feedback_without_assistant_content() {
+        let mut messages = vec![Message::system("sys"), Message::user("doc")];
+        // Transport failure case: no assistant output to feed back.
+        requeue_feedback(&mut messages, 2, None, "try again");
+        assert_eq!(messages.len(), 3);
+        assert_eq!(messages[2].role, "user");
+        assert_eq!(messages[2].content, "try again");
     }
 }
