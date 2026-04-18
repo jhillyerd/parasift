@@ -22,6 +22,22 @@ pub struct Pipeline {
     pub include_filename: bool,
 }
 
+/// The outcome of a single attempt at getting a valid response from the
+/// model. The retry loop matches on this to decide whether to retry with
+/// feedback or give up.
+enum StepResult {
+    /// The response validated successfully.
+    Ok(Value),
+    /// The response failed; include `detail` in the error record and feed
+    /// `feedback` back to the model on the next attempt. `raw_assistant`
+    /// is the model's verbatim output, if any (absent for transport failures).
+    Failed {
+        detail: String,
+        raw_assistant: Option<String>,
+        feedback: String,
+    },
+}
+
 impl Pipeline {
     /// Classify a single file, producing a [`ResultRecord`] that is safe to
     /// emit regardless of outcome (success or error).
@@ -70,122 +86,98 @@ impl Pipeline {
         // of `max_retries`.
         const INITIAL_MESSAGES: usize = 2;
 
-        let mut last_error_detail = String::new();
-
         // attempts = 1 initial + up to max_retries retries (SPEC §9.4).
         let total_attempts = 1 + self.max_retries;
         for attempt in 0..total_attempts {
             log_prompt(attempt, &messages);
-            let raw = match self.client.chat(&messages, self.model.as_deref()) {
-                Ok(s) => s,
-                Err(e) => {
-                    // Transport / HTTP error: treat like a validation failure
-                    // for retry purposes, feeding the error back to the model
-                    // on the next loop.
-                    last_error_detail = format!("model call failed: {e}");
-                    warn!(attempt = attempt + 1, error = %last_error_detail, "model call failed");
-                    // No assistant content to append; but we still want to
-                    // give the model a chance to try again with feedback.
-                    if attempt + 1 < total_attempts {
-                        // No assistant content to show the model (request
-                        // didn't even succeed), so just replace any prior
-                        // feedback with a fresh "try again" nudge.
-                        requeue_feedback(
-                            &mut messages,
-                            INITIAL_MESSAGES,
-                            None,
-                            &format!(
-                                "The previous request did not produce output ({}). Try again and output ONLY the JSON object.",
-                                last_error_detail
-                            ),
-                        );
-                        continue;
-                    } else {
-                        return ResultRecord::err(
-                            source,
-                            format!(
-                                "schema validation failed after {} retries: {}",
-                                self.max_retries, last_error_detail
-                            ),
-                        );
-                    }
-                }
-            };
+            let step = self.attempt(&messages, attempt);
 
-            debug!(attempt = attempt + 1, response = %raw, "model response");
-            // Strip code fences if the model emitted them anyway.
-            let candidate_str = strip_code_fences(&raw);
-
-            // Parse JSON.
-            let parsed: Value = match serde_json::from_str(candidate_str) {
-                Ok(v) => v,
-                Err(e) => {
-                    last_error_detail = format!("response was not valid JSON: {e}");
-                    warn!(attempt = attempt + 1, error = %last_error_detail, "JSON parse failed");
-                    if attempt + 1 < total_attempts {
-                        requeue_feedback(
-                            &mut messages,
-                            INITIAL_MESSAGES,
-                            Some(&raw),
-                            &format!(
-                                "Your previous output did not validate: {}. Output ONLY a single JSON object that conforms to the schema.",
-                                last_error_detail
-                            ),
-                        );
-                        continue;
-                    } else {
-                        return ResultRecord::err(
-                            source,
-                            format!(
-                                "schema validation failed after {} retries: {}",
-                                self.max_retries, last_error_detail
-                            ),
-                        );
-                    }
-                }
-            };
-
-            // Validate against schema.
-            match collect_errors(&self.validator, &parsed) {
-                Ok(()) => {
+            match step {
+                StepResult::Ok(parsed) => {
                     debug!(attempt = attempt + 1, "validation succeeded");
                     return ResultRecord::ok(source, parsed);
                 }
-                Err(errs) => {
-                    last_error_detail = errs.join("; ");
-                    warn!(attempt = attempt + 1, error = %last_error_detail, "schema validation failed");
+                StepResult::Failed {
+                    detail,
+                    raw_assistant,
+                    feedback,
+                } => {
+                    warn!(attempt = attempt + 1, error = %detail, "attempt failed");
                     if attempt + 1 < total_attempts {
                         requeue_feedback(
                             &mut messages,
                             INITIAL_MESSAGES,
-                            Some(&raw),
-                            &format!(
-                                "Your previous output did not validate against the schema: {}. Fix it and output ONLY a single JSON object.",
-                                last_error_detail
-                            ),
+                            raw_assistant.as_deref(),
+                            &feedback,
                         );
-                        continue;
                     } else {
-                        return ResultRecord::err(
-                            source,
-                            format!(
-                                "schema validation failed after {} retries: {}",
-                                self.max_retries, last_error_detail
-                            ),
-                        );
+                        return ResultRecord::err(source, detail);
                     }
                 }
             }
         }
 
-        // Loop invariant guarantees we return above, but provide a safety net.
-        ResultRecord::err(
-            source,
-            format!(
-                "schema validation failed after {} retries: {}",
-                self.max_retries, last_error_detail
-            ),
-        )
+        unreachable!("loop always returns on the final attempt")
+    }
+
+    /// Execute a single attempt: call the model, parse JSON, validate
+    /// against schema. Returns [`StepResult::Ok`] on success, or
+    /// [`StepResult::Failed`] with detail and feedback for the retry loop.
+    fn attempt(&self, messages: &[Message], attempt: u32) -> StepResult {
+        let raw = match self.client.chat(messages, self.model.as_deref()) {
+            Ok(s) => s,
+            Err(e) => {
+                let detail = format!("model request failed after {} retries: {e}", attempt);
+                return StepResult::Failed {
+                    detail,
+                    raw_assistant: None,
+                    feedback: format!(
+                        "The previous request did not produce output ({e}). \
+                         Try again and output ONLY the JSON object."
+                    ),
+                };
+            }
+        };
+
+        debug!(attempt = attempt + 1, response = %raw, "model response");
+        let candidate_str = strip_code_fences(&raw);
+
+        let parsed: Value = match serde_json::from_str(candidate_str) {
+            Ok(v) => v,
+            Err(e) => {
+                let detail = format!(
+                    "JSON parse failed after {} retries: response was not valid JSON: {e}",
+                    attempt
+                );
+                return StepResult::Failed {
+                    detail,
+                    raw_assistant: Some(raw.clone()),
+                    feedback: format!(
+                        "Your previous output did not validate: response was not valid JSON: {e}. \
+                         Output ONLY a single JSON object that conforms to the schema."
+                    ),
+                };
+            }
+        };
+
+        match collect_errors(&self.validator, &parsed) {
+            Ok(()) => StepResult::Ok(parsed),
+            Err(errs) => {
+                let joined = errs.join("; ");
+                let detail = format!(
+                    "schema validation failed after {} retries: {joined}",
+                    attempt
+                );
+                StepResult::Failed {
+                    detail,
+                    raw_assistant: Some(raw),
+                    feedback: format!(
+                        "Your previous output did not validate against the schema: {joined}. \
+                         Fix it and output ONLY a single JSON object."
+                    ),
+                }
+            }
+        }
     }
 }
 
@@ -229,18 +221,25 @@ fn requeue_feedback(
 }
 
 /// If the model wrapped JSON in ```json ... ``` fences, peel them off.
+/// Handles common casing variants like `` ```JSON `` and `` ```Json ``.
 fn strip_code_fences(s: &str) -> &str {
     let t = s.trim();
-    if let Some(rest) = t.strip_prefix("```json") {
-        let rest = rest.trim_start_matches('\n');
-        if let Some(inner) = rest.rsplit_once("```") {
-            return inner.0.trim();
-        }
+    if t.len() < 6 || !t.starts_with("```") {
+        return t;
     }
-    if let Some(rest) = t.strip_prefix("```") {
-        let rest = rest.trim_start_matches('\n');
-        if let Some(inner) = rest.rsplit_once("```") {
-            return inner.0.trim();
+    let after_ticks = &t[3..];
+    // If the chars between ``` and the first newline are all alphanumeric,
+    // treat them as a language tag and skip past it.
+    let content = match after_ticks.find('\n') {
+        Some(nl) if after_ticks[..nl].chars().all(|c| c.is_ascii_alphanumeric()) => {
+            &after_ticks[nl + 1..]
+        }
+        _ => after_ticks,
+    };
+    if let Some(inner) = content.rsplit_once("```") {
+        let body = inner.0.trim();
+        if !body.is_empty() {
+            return body;
         }
     }
     t
@@ -253,6 +252,8 @@ mod tests {
     #[test]
     fn fences_stripped() {
         assert_eq!(strip_code_fences("```json\n{\"a\":1}\n```"), "{\"a\":1}");
+        assert_eq!(strip_code_fences("```JSON\n{\"a\":1}\n```"), "{\"a\":1}");
+        assert_eq!(strip_code_fences("```Json\n{\"a\":1}\n```"), "{\"a\":1}");
         assert_eq!(strip_code_fences("```\n{\"a\":1}\n```"), "{\"a\":1}");
         assert_eq!(strip_code_fences("  {\"a\":1}  "), "{\"a\":1}");
     }
