@@ -52,12 +52,13 @@ The binary is produced at `target/release/parasift`.
 ## Usage
 
 ```
-parasift --config <config.yaml> --input <dir> [--concurrency N] [--hide-filename]
+parasift --config <config.yaml> --input <dir> [--concurrency N] [--model NAME] [--hide-filename]
 ```
 
 - `-c, --config` — YAML config bundling the instructions and output JSON Schema.
 - `-i, --input` — directory of files to classify (non-recursive).
 - `-j, --concurrency` — in-flight requests; should match the server's slot count.
+- `-m, --model` — model name sent to the endpoint (default: `local-model`).
 - `--hide-filename` — don't include the basename in the prompt (useful for
   benchmarking where filenames may leak labels).
 
@@ -73,6 +74,7 @@ modifying the command line or config file.
 |---|---|---|
 | `PARASIFT_LLM_URL` | `--llm-url` | Base URL of the OpenAI-compatible endpoint (required). |
 | `PARASIFT_LLM_API_KEY` | `--llm-api-key` | Bearer token for the endpoint (optional, for hosted providers). |
+| `PARASIFT_MODEL` | `-m` | Model name sent to the endpoint (default: `local-model`). |
 | `PARASIFT_CONCURRENCY` | `-j` | In-flight request count (default: 1). |
 | `RUST_LOG` | — | Logging level (e.g. `debug`, `warn`; default: `warn`). |
 
@@ -89,7 +91,6 @@ instructions: |
   object that conforms to the provided schema. Do not include any
   commentary outside the JSON.
 
-model: local-model
 max_retries: 2
 
 schema:

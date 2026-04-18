@@ -26,3 +26,4 @@ devenv.lock
 # Added by cargo
 
 /target
+.env

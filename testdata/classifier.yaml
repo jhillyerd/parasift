@@ -27,8 +27,6 @@ instructions: |
 
   Do not include any commentary outside the JSON object.
 
-model: local-model
-
 max_retries: 2
 
 schema:

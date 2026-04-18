@@ -77,7 +77,6 @@ by any implementation.
 |----------------|---------------|----------|---------|-----------------------------------------------------------------------------|
 | `instructions` | string        | yes      | —       | Reusable prompt / system instructions shown to the model for every document. |
 | `schema`       | mapping       | yes      | —       | JSON Schema object conforming to **JSON Schema draft 2020-12**, describing the classification output for a single document. |
-| `model`        | string        | no       | —       | Model identifier sent to the inference server.                              |
 | `max_retries`  | integer ≥ 0   | no       | `2`     | Retry attempts allowed after a validation failure before marking a file failed. |
 
 Unknown top-level keys MUST be rejected. This keeps configs portable
@@ -90,8 +89,6 @@ instructions: |
   You are a document classifier. Read the document and produce a JSON
   object that conforms to the provided schema. Do not include any
   commentary outside the JSON.
-
-model: local-model
 
 max_retries: 2
 
@@ -128,6 +125,9 @@ Abstract inputs (concrete CLI flag names are implementation-defined):
 - **config file** — path to the YAML config described in §4.
 - **concurrency limit** — integer ≥ 1. Matches the number of slots the
   inference server exposes.
+- **model identifier** — optional string. Model name sent to the
+  inference endpoint. When omitted, the implementation may send a
+  sensible default (e.g. `"local-model"`).
 - **`PARASIFT_LLM_URL`** — environment variable (§3).
 
 Output:
