@@ -140,23 +140,27 @@ impl Pipeline {
         };
 
         debug!(attempt = attempt + 1, response = %raw, "model response");
-        let candidate_str = strip_code_fences(&raw);
 
-        let parsed: Value = match serde_json::from_str(candidate_str) {
-            Ok(v) => v,
-            Err(e) => {
-                let detail = format!(
-                    "JSON parse failed after {} retries: response was not valid JSON: {e}",
-                    attempt
-                );
-                return StepResult::Failed {
-                    detail,
-                    raw_assistant: Some(raw.clone()),
-                    feedback: format!(
-                        "Your previous output did not validate: response was not valid JSON: {e}. \
-                         Output ONLY a single JSON object that conforms to the schema."
-                    ),
-                };
+        // Scope the borrow from strip_code_fences so `raw` is movable
+        // afterward — avoids cloning the full model response on error.
+        let parsed: Value = {
+            let candidate = strip_code_fences(&raw);
+            match serde_json::from_str(candidate) {
+                Ok(v) => v,
+                Err(e) => {
+                    let detail = format!(
+                        "JSON parse failed after {} retries: response was not valid JSON: {e}",
+                        attempt
+                    );
+                    return StepResult::Failed {
+                        detail,
+                        raw_assistant: Some(raw),
+                        feedback: format!(
+                            "Your previous output did not validate: response was not valid JSON: {e}. \
+                             Output ONLY a single JSON object that conforms to the schema."
+                        ),
+                    };
+                }
             }
         };
 
