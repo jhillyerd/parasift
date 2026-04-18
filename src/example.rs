@@ -44,7 +44,13 @@ fn synthesize(schema: &Value) -> Value {
     };
 
     match ty {
-        "string" => json!(""),
+        "string" => {
+            let min_len = schema
+                .get("minLength")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0) as usize;
+            json!("a".repeat(min_len))
+        }
         "number" | "integer" => json!(0),
         "boolean" => json!(false),
         "null" => Value::Null,
@@ -72,7 +78,9 @@ pub fn validate_example_against_schema(schema: &Value, example: &Value) -> Resul
         .map_err(|e| anyhow::anyhow!("failed to compile schema: {e}"))?;
     if let Err(errors) = collect_errors(&validator, example) {
         bail!(
-            "generated example does not validate against schema: {}",
+            "auto-generated example does not satisfy schema constraints ({}). \
+             Add an `examples` array or `default` value to the schema so a valid \
+             example can be produced.",
             errors.join("; ")
         );
     }
@@ -131,6 +139,14 @@ mod tests {
     }
 
     #[test]
+    fn respects_min_length() {
+        assert_eq!(
+            generate_example(&json!({"type": "string", "minLength": 3})),
+            json!("aaa")
+        );
+    }
+
+    #[test]
     fn synthesizes_object_with_properties() {
         let schema = json!({
             "type": "object",
@@ -163,10 +179,14 @@ mod tests {
 
     #[test]
     fn detects_invalid_synthesized_example() {
-        // synthesized "" will not satisfy minLength: 1.
-        let schema = json!({"type": "string", "minLength": 1});
+        // Synthesis cannot satisfy arbitrary `pattern`, so a schema that
+        // requires a specific pattern will still fail — but the error
+        // message should now suggest adding `examples` or `default`.
+        let schema = json!({"type": "string", "pattern": "^\\d+$"});
         let ex = generate_example(&schema);
         let err = validate_example_against_schema(&schema, &ex).unwrap_err();
-        assert!(err.to_string().contains("does not validate"));
+        let msg = err.to_string();
+        assert!(msg.contains("auto-generated example does not satisfy"));
+        assert!(msg.contains("`examples` array or `default` value"));
     }
 }
