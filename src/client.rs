@@ -12,6 +12,7 @@ use tracing::warn;
 pub const URL_ENV: &str = "PARASIFT_LLM_URL";
 pub const API_KEY_ENV: &str = "PARASIFT_LLM_API_KEY";
 pub const CONCURRENCY_ENV: &str = "PARASIFT_CONCURRENCY";
+pub const MODEL_ENV: &str = "PARASIFT_MODEL";
 
 /// Total HTTP attempts for transient (transport / 5xx / 429) failures:
 /// one initial request plus up to this many retries. Distinct from the

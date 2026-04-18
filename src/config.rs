@@ -12,12 +12,11 @@ use std::path::Path;
 pub struct Config {
     pub instructions: String,
     pub schema: Value,
-    pub model: Option<String>,
     pub max_retries: u32,
 }
 
 /// Keys permitted at the top level of the config (SPEC §4.1).
-const ALLOWED_KEYS: &[&str] = &["instructions", "schema", "model", "max_retries"];
+const ALLOWED_KEYS: &[&str] = &["instructions", "schema", "max_retries"];
 
 pub fn load(path: &Path) -> Result<Config> {
     let text = fs::read_to_string(path)
@@ -72,13 +71,6 @@ pub fn parse(text: &str) -> Result<Config> {
         bail!("'schema' must be a JSON Schema object (mapping)");
     }
 
-    // model: optional string.
-    let model = match map.get("model") {
-        Some(serde_yaml::Value::String(s)) => Some(s.clone()),
-        Some(serde_yaml::Value::Null) | None => None,
-        Some(_) => bail!("'model' must be a string"),
-    };
-
     // max_retries: optional integer >= 0, default 2.
     let max_retries = match map.get("max_retries") {
         Some(serde_yaml::Value::Number(n)) => {
@@ -97,7 +89,6 @@ pub fn parse(text: &str) -> Result<Config> {
     Ok(Config {
         instructions,
         schema,
-        model,
         max_retries,
     })
 }
@@ -117,7 +108,6 @@ schema:
         let cfg = parse(MINIMAL).expect("parse");
         assert_eq!(cfg.instructions, "classify");
         assert_eq!(cfg.max_retries, 2);
-        assert!(cfg.model.is_none());
         assert_eq!(cfg.schema["type"], "object");
     }
 
@@ -163,7 +153,6 @@ schema:
     fn accepts_example_from_repo() {
         let text = include_str!("../examples/classifier.yaml");
         let cfg = parse(text).expect("example classifier.yaml");
-        assert_eq!(cfg.model.as_deref(), Some("local-model"));
         assert_eq!(cfg.max_retries, 2);
     }
 }

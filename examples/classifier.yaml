@@ -3,8 +3,6 @@ instructions: |
   object that conforms to the provided schema. Do not include any
   commentary outside the JSON.
 
-model: local-model
-
 max_retries: 2
 
 schema:

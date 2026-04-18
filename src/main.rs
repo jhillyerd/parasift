@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::classify::Pipeline;
-use crate::client::{ChatClient, API_KEY_ENV, CONCURRENCY_ENV, URL_ENV};
+use crate::client::{ChatClient, API_KEY_ENV, CONCURRENCY_ENV, MODEL_ENV, URL_ENV};
 use crate::output::emit;
 use tracing_subscriber::EnvFilter;
 
@@ -51,6 +51,11 @@ struct Cli {
     /// for hosted providers that require auth.
     #[arg(long, env = API_KEY_ENV, hide_env_values = true)]
     llm_api_key: Option<String>,
+
+    /// Model name sent to the inference endpoint. Defaults to "local-model"
+    /// if not set.
+    #[arg(long, short = 'm', env = MODEL_ENV)]
+    model: Option<String>,
 
     /// Hide filenames from the model. By default the file's basename is
     /// included in the prompt; pass this flag for unbiased benchmarking
@@ -116,7 +121,7 @@ fn main() -> Result<()> {
         validator,
         instructions: cfg.instructions,
         example_json,
-        model: cfg.model,
+        model: cli.model,
         max_retries: cfg.max_retries,
         include_filename: !cli.hide_filename,
     });
