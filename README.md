@@ -12,8 +12,9 @@ See [`SPEC.md`](SPEC.md) for the full contract.
 
 - A running OpenAI-compatible chat completions endpoint (e.g.
   `llama-server`, `vllm`, LM Studio).
-- The `CLASSIFIER_LLM_URL` environment variable set to the server's base
-  URL (e.g. `http://localhost:8080/v1`).
+- The `PARASIFT_LLM_URL` environment variable set to the server's base
+  URL (e.g. `http://localhost:8080/v1`), or equivalently the
+  `--llm-url` flag.
 
 ## Install
 
@@ -75,7 +76,7 @@ schema:
 Run it:
 
 ```sh
-export CLASSIFIER_LLM_URL=http://localhost:8080/v1
+export PARASIFT_LLM_URL=http://localhost:8080/v1
 parasift -c examples/classifier.yaml -i testdata/docs -j 4 > results.jsonl
 ```
 

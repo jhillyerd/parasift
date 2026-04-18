@@ -45,7 +45,7 @@ An implementation of `parasift` MUST:
   `vllm`, `LM Studio`, and others — the spec pins the contract, not the
   server).
 - The base URL is supplied via the environment variable
-  **`CLASSIFIER_LLM_URL`**.
+  **`PARASIFT_LLM_URL`**.
   - This variable is **required**. The tool MUST exit with an error if
     it is unset or empty.
   - The value is treated as a base (for example
@@ -53,7 +53,7 @@ An implementation of `parasift` MUST:
     `/chat/completions`.
 - Authentication, if required by the target endpoint, is
   implementation-defined (for example an optional
-  `CLASSIFIER_LLM_API_KEY` environment variable). The spec does not
+  `PARASIFT_LLM_API_KEY` environment variable). The spec does not
   require it.
 
 ---
@@ -128,7 +128,7 @@ Abstract inputs (concrete CLI flag names are implementation-defined):
 - **config file** — path to the YAML config described in §4.
 - **concurrency limit** — integer ≥ 1. Matches the number of slots the
   inference server exposes.
-- **`CLASSIFIER_LLM_URL`** — environment variable (§3).
+- **`PARASIFT_LLM_URL`** — environment variable (§3).
 
 Output:
 
@@ -219,7 +219,7 @@ Per document:
 
 - No output destination other than JSONL on stdout.
 - No built-in model hosting — `parasift` assumes an already-running
-  OpenAI-compatible endpoint at `CLASSIFIER_LLM_URL`.
+  OpenAI-compatible endpoint at `PARASIFT_LLM_URL`.
 - No training, fine-tuning, or evaluation harness.
 - Choice of language, HTTP client, YAML parser, and JSON Schema
   validator library are intentionally unspecified.
@@ -227,7 +227,7 @@ Per document:
 What **is** fixed across implementations:
 
 - The config file format and its top-level keys (§4).
-- The inference endpoint contract and the `CLASSIFIER_LLM_URL` env var
+- The inference endpoint contract and the `PARASIFT_LLM_URL` env var
   (§3).
 - The JSONL result record shape (§6).
 - The schema-driven example generation rules (§7).

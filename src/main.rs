@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::classify::Pipeline;
-use crate::client::ChatClient;
+use crate::client::{ChatClient, API_KEY_ENV, CONCURRENCY_ENV, URL_ENV};
 use crate::output::emit;
 use tracing_subscriber::EnvFilter;
 
@@ -39,8 +39,18 @@ struct Cli {
 
     /// Number of in-flight requests against the inference server.
     /// Should match the server's slot count.
-    #[arg(long, short = 'j', default_value_t = 1)]
+    #[arg(long, short = 'j', env = CONCURRENCY_ENV, default_value_t = 1)]
     concurrency: usize,
+
+    /// Base URL of the OpenAI-compatible chat completions endpoint
+    /// (e.g. `http://localhost:8080/v1`). Required.
+    #[arg(long, env = URL_ENV, hide_env_values = false)]
+    llm_url: String,
+
+    /// Bearer token for the inference endpoint. Optional; only needed
+    /// for hosted providers that require auth.
+    #[arg(long, env = API_KEY_ENV, hide_env_values = true)]
+    llm_api_key: Option<String>,
 
     /// Hide filenames from the model. By default the file's basename is
     /// included in the prompt; pass this flag for unbiased benchmarking
@@ -66,6 +76,10 @@ fn main() -> Result<()> {
         bail!("--concurrency must be >= 1");
     }
 
+    if cli.llm_url.trim().is_empty() {
+        bail!("--llm-url (or ${URL_ENV}) must not be empty");
+    }
+
     // Load & parse config (SPEC §4).
     let cfg = config::load(&cli.config)?;
 
@@ -82,9 +96,13 @@ fn main() -> Result<()> {
         .context("generated schema example")?;
     let example_json = serde_json::to_string_pretty(&example).expect("example serialization");
 
-    // Connect to the inference server (validates CLASSIFIER_LLM_URL).
-    // The client's idle-connection pool is sized from `--concurrency`.
-    let client = ChatClient::from_env(cli.concurrency)?;
+    // Connect to the inference server. The client's idle-connection
+    // pool is sized from `--concurrency`.
+    let client = ChatClient::new(
+        &cli.llm_url,
+        cli.llm_api_key.as_deref().filter(|s| !s.is_empty()),
+        cli.concurrency,
+    );
 
     // Enumerate input files, non-recursive, files only, skip dot-files.
     let files = list_input_files(&cli.input)?;

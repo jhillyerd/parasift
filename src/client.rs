@@ -1,13 +1,17 @@
 //! OpenAI-compatible chat completions client (SPEC §3).
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::time::{Duration, SystemTime};
 use tracing::warn;
 
-pub const URL_ENV: &str = "CLASSIFIER_LLM_URL";
-pub const API_KEY_ENV: &str = "CLASSIFIER_LLM_API_KEY";
+/// Environment variable names surfaced via `clap`'s `env` attribute.
+/// These are declared here so the client module owns its configuration
+/// contract; `main.rs` just wires them into the CLI.
+pub const URL_ENV: &str = "PARASIFT_LLM_URL";
+pub const API_KEY_ENV: &str = "PARASIFT_LLM_API_KEY";
+pub const CONCURRENCY_ENV: &str = "PARASIFT_CONCURRENCY";
 
 /// Total HTTP attempts for transient (transport / 5xx / 429) failures:
 /// one initial request plus up to this many retries. Distinct from the
@@ -61,20 +65,15 @@ pub struct ChatClient {
 }
 
 impl ChatClient {
-    /// Build a client from environment variables. Fails if
-    /// `CLASSIFIER_LLM_URL` is unset or empty (SPEC §3).
+    /// Build a client from an explicit base URL and optional bearer
+    /// token. The URL is expected to already be non-empty (validated by
+    /// the CLI layer).
     ///
     /// `concurrency` is the number of worker threads that will share this
     /// client; it is used to size the HTTP keep-alive pool so workers
     /// can hand sockets back and forth instead of re-handshaking TLS on
     /// every request.
-    pub fn from_env(concurrency: usize) -> Result<Self> {
-        let base_url = std::env::var(URL_ENV).ok().unwrap_or_default();
-        if base_url.trim().is_empty() {
-            bail!("required environment variable {URL_ENV} is unset or empty");
-        }
-        let api_key = std::env::var(API_KEY_ENV).ok().filter(|s| !s.is_empty());
-
+    pub fn new(base_url: &str, api_key: Option<&str>, concurrency: usize) -> Self {
         // Keep roughly 20% of the worker count as warm idle connections.
         // At N=1 this floors to 1; at N=100 it's 20. Idle sockets are cheap
         // but not free, so we don't reserve one per worker — workers mostly
@@ -88,11 +87,11 @@ impl ChatClient {
             .timeout_read(Duration::from_secs(300))
             .timeout_write(Duration::from_secs(60))
             .build();
-        Ok(Self {
+        Self {
             base_url: base_url.trim_end_matches('/').to_string(),
-            api_key,
+            api_key: api_key.map(str::to_owned),
             agent,
-        })
+        }
     }
 
     /// Send a chat completion request and return the `choices[0].message.content`.
