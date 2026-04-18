@@ -232,21 +232,28 @@ fn strip_code_fences(s: &str) -> &str {
         return t;
     }
     let after_ticks = &t[3..];
-    // If the chars between ``` and the first newline are all alphanumeric,
-    // treat them as a language tag and skip past it.
-    let content = match after_ticks.find('\n') {
-        Some(nl) if after_ticks[..nl].chars().all(|c| c.is_ascii_alphanumeric()) => {
-            &after_ticks[nl + 1..]
-        }
-        _ => after_ticks,
+    let Some((raw_body, _)) = after_ticks.rsplit_once("```") else {
+        return t;
     };
-    if let Some(inner) = content.rsplit_once("```") {
-        let body = inner.0.trim();
-        if !body.is_empty() {
-            return body;
+    // Detect an optional language tag — a run of alphanumeric chars
+    // immediately after the opening ```, separated from the body by a
+    // newline. If the entire content between fences is alphanumeric with
+    // no newline, it's a bare tag with no body (e.g. "```json```") and
+    // must not be stripped.
+    let body = match raw_body.find('\n') {
+        Some(nl)
+            if !raw_body[..nl].is_empty()
+                && raw_body[..nl].chars().all(|c| c.is_ascii_alphanumeric()) =>
+        {
+            raw_body[nl + 1..].trim()
         }
+        _ if raw_body.chars().all(|c| c.is_ascii_alphanumeric()) => return t,
+        _ => raw_body.trim(),
+    };
+    if body.is_empty() {
+        return t;
     }
-    t
+    body
 }
 
 #[cfg(test)]
@@ -260,6 +267,14 @@ mod tests {
         assert_eq!(strip_code_fences("```Json\n{\"a\":1}\n```"), "{\"a\":1}");
         assert_eq!(strip_code_fences("```\n{\"a\":1}\n```"), "{\"a\":1}");
         assert_eq!(strip_code_fences("  {\"a\":1}  "), "{\"a\":1}");
+        // Inline fenced JSON (no lang tag, no newline) still strips.
+        assert_eq!(strip_code_fences("```{\"a\":1}```"), "{\"a\":1}");
+    }
+
+    #[test]
+    fn bare_language_tag_not_stripped() {
+        assert_eq!(strip_code_fences("```json```"), "```json```");
+        assert_eq!(strip_code_fences("```JSON```"), "```JSON```");
     }
 
     #[test]
