@@ -6,14 +6,6 @@ use serde_json::json;
 use std::time::{Duration, SystemTime};
 use tracing::warn;
 
-/// Environment variable names surfaced via `clap`'s `env` attribute.
-/// These are declared here so the client module owns its configuration
-/// contract; `main.rs` just wires them into the CLI.
-pub const URL_ENV: &str = "PARASIFT_LLM_URL";
-pub const API_KEY_ENV: &str = "PARASIFT_LLM_API_KEY";
-pub const CONCURRENCY_ENV: &str = "PARASIFT_CONCURRENCY";
-pub const MODEL_ENV: &str = "PARASIFT_MODEL";
-
 /// Total HTTP attempts for transient (transport / 5xx / 429) failures:
 /// one initial request plus up to this many retries. Distinct from the
 /// validation-retry loop in `classify.rs` so a transient network blip

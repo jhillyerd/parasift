@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::classify::Pipeline;
-use crate::client::{ChatClient, API_KEY_ENV, CONCURRENCY_ENV, MODEL_ENV, URL_ENV};
+use crate::client::ChatClient;
 use crate::output::emit;
 use tracing_subscriber::EnvFilter;
 
@@ -39,22 +39,22 @@ struct Cli {
 
     /// Number of in-flight requests against the inference server.
     /// Should match the server's slot count.
-    #[arg(long, short = 'j', env = CONCURRENCY_ENV, default_value_t = 1)]
+    #[arg(long, short = 'j', env = "PARASIFT_CONCURRENCY", default_value_t = 1)]
     concurrency: usize,
 
     /// Base URL of the OpenAI-compatible chat completions endpoint
     /// (e.g. `http://localhost:8080/v1`). Required.
-    #[arg(long, env = URL_ENV, hide_env_values = false)]
+    #[arg(long, env = "PARASIFT_LLM_URL", hide_env_values = false)]
     llm_url: String,
 
     /// Bearer token for the inference endpoint. Optional; only needed
     /// for hosted providers that require auth.
-    #[arg(long, env = API_KEY_ENV, hide_env_values = true)]
+    #[arg(long, env = "PARASIFT_LLM_API_KEY", hide_env_values = true)]
     llm_api_key: Option<String>,
 
     /// Model name sent to the inference endpoint. Defaults to "local-model"
     /// if not set.
-    #[arg(long, short = 'm', env = MODEL_ENV)]
+    #[arg(long, short = 'm', env = "PARASIFT_MODEL")]
     model: Option<String>,
 
     /// Hide filenames from the model. By default the file's basename is
@@ -82,7 +82,7 @@ fn main() -> Result<()> {
     }
 
     if cli.llm_url.trim().is_empty() {
-        bail!("--llm-url (or ${URL_ENV}) must not be empty");
+        bail!("--llm-url (or $PARASIFT_LLM_URL) must not be empty");
     }
 
     // Load & parse config (SPEC §4).
