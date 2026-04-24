@@ -50,7 +50,7 @@ jobs:
           cd target/${{ matrix.target }}/release
           tar czf ../../../parasift-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz parasift
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: parasift-${{ matrix.target }}
           path: parasift-*.tar.gz
